@@ -25,9 +25,20 @@ module.exports = class {
             if(!(dataMapper instanceof DataMapper)){
                 throw new MongooseEntityError(constants.errors.incorrectInitReturnType);
             }
-            var mongooseModel = mongoose.model(dataMapper.name, dataMapper.schema);
-            var domainModel = dataMapper.model;
-            var dataSet = new DataSet(mongooseModel, domainModel);
+            var mongooseModel = dataMapper.mongooseModel;
+            var domainModel = dataMapper.domainModel;
+            let refs = new Map();
+            for(let key in dataMapper.schema.paths){
+                let path = dataMapper.schema.paths[key];
+                let options = path.options;
+                let ref = options.ref || (options.type[0] && options.type[0].ref);
+                if(!(typeof ref === 'string')) continue;
+                let mapper = dataMappers.find(mapper => mapper.mongooseModel.modelName === ref);
+                if(!mapper) continue;
+                let constructor = mapper.domainModel;
+                refs.set(mapper.mongooseModel.collection.collectionName, constructor);
+            }
+            let dataSet = new DataSet(mongooseModel, domainModel, refs);
             Object.defineProperty(this, mongooseModel.collection.collectionName, {
                 get() {
                     return dataSet;

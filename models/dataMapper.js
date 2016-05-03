@@ -5,8 +5,8 @@ var constants = require('../constants');
 var MongooseEntityError = require('../errors/mongooseEntityError');
 
 var _schemas = new WeakMap();
-var _models = new WeakMap();
-var _names = new WeakMap();
+var _domainModels = new WeakMap();
+var _mongooseModels = new WeakMap();
 
 module.exports = class {
     constructor(schema, model, name = model && model.name) {
@@ -20,17 +20,17 @@ module.exports = class {
             throw new MongooseEntityError(constants.entityNameIsIncorrect);
         }
         _schemas.set(this, schema);
-        _models.set(this, model);
-        _names.set(this, name);
+        _domainModels.set(this, model);
+        _mongooseModels.set(this, mongoose.model(name, schema));
     }
     
     get schema(){
         return _schemas.get(this);
     }
-    get model(){
-        return _models.get(this);
+    get domainModel(){
+        return _domainModels.get(this);
     }
-    get name(){
-        return _names.get(this);
+    get mongooseModel(){
+        return _mongooseModels.get(this);
     }
 }
