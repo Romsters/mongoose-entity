@@ -1,0 +1,41 @@
+{
+  "name": "mongoose-entity",
+  "version": "0.0.1",
+  "description": "mongoose based ORM",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Romsters/mongoose-entity.git"
+  },
+  "keywords": [
+    "mongoose",
+    "class",
+    "wrapper",
+    "class-wrapper",
+    "orm",
+    "mongo",
+    "mongoDB",
+    "ORM",
+    "repository",
+    "database",
+    "framework",
+    "es6",
+    "ecma",
+    "script",
+    "es",
+    "es6-wrapper",
+    "js"
+  ],
+  "author": "Roman Petriv",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Romsters/mongoose-entity/issues"
+  },
+  "homepage": "https://github.com/Romsters/mongoose-entity#readme",
+  "dependencies": {
+    "mongoose": "^4.4.14"
+  }
+}
