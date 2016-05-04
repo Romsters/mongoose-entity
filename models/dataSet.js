@@ -37,30 +37,51 @@ module.exports = class {
             this.throwQueryFailed('remove');
         }
     }
-    *populate(entity, path){
+    *populate(entity, options){
         this.throwIfNotAppropriateInstance(entity, _domainModel.get(this));
+        var paths = null;
+        if(typeof options === 'string'){
+            paths = options.split(' ');
+        } else{
+            paths = options && options.path && options.path.split(' ');
+        }
+        if(!paths || !paths.length){
+            this.throwQueryFailed('populate');
+        }
         var refs = _refs.get(this);
-        var Constructor = refs.get(path);
-        this.throwIfInvalidDomainModel(Constructor);
+        var notLoadedPaths = [];
+        for(let path of paths){
+            let Constructor = refs.get(path);
+            this.throwIfInvalidDomainModel(Constructor);
+            if(entity[path] instanceof Constructor){
+                continue;
+            }
+            if(entity[path] && entity[path][0] instanceof Constructor){
+                continue;
+            }
+            notLoadedPaths.push(path);
+        }
+        if(!notLoadedPaths.length){
+            return entity;
+        }
         var MongooseModel = _mongooseModel.get(this);
-        if(entity[path] instanceof Constructor){
-            return entity;
-        }
-        if(entity[path] && entity[path][0] instanceof Constructor){
-            return entity;
-        }
+        var _options = options;
+        _options.path = notLoadedPaths.join(' ');
         try{
-            let mongooseEntity = yield MongooseModel.findOne({ _id: entity._id }).populate(path);
-            if(!mongooseEntity[path]){
-                return entity;
+            let mongooseEntity = yield MongooseModel.findOne({ _id: entity._id }).populate(_options);
+            for(let path of notLoadedPaths){
+                if(!mongooseEntity[path]){
+                    continue;
+                }
+                let value = null;
+                let Constructor = refs.get(path);
+                if(mongooseEntity[path].length){
+                    value = mongooseEntity[path].map(item => new Constructor(item));
+                } else {
+                    value = new Constructor(mongooseEntity[path]);
+                }
+                entity[path] = value;
             }
-            var value = null;
-            if(mongooseEntity[path].length){
-                value = mongooseEntity[path].map(item => new Constructor(item));
-            } else {
-                value = new Constructor(mongooseEntity[path]);
-            }
-            entity[path] = value;
             return entity;
         } catch(e){
             this.throwQueryFailed('populate');
