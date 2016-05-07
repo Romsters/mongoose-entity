@@ -97,7 +97,13 @@ book.author = user;*/
 
 co(function*(){
     var user = yield* context.users.findOne({name: 'name'});
-    yield* context.users.populate(user, 'books');
+    yield* context.users.populate(user, {
+        path: 'books',
+        populate: {
+            path: 'author',
+            populate: 'books'
+        }
+    });
     yield* context.users.save(user);
     yield* context.books.save(book);
     return null;

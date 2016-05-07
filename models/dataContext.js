@@ -35,10 +35,10 @@ module.exports = class {
                 if(!(typeof ref === 'string')) continue;
                 let mapper = dataMappers.find(mapper => mapper.mongooseModel.modelName === ref);
                 if(!mapper) continue;
-                let constructor = mapper.domainModel;
-                refs.set(path.path, constructor);
+                let setName = mapper.mongooseModel.collection.collectionName;
+                refs.set(path.path, setName);
             }
-            let dataSet = new DataSet(mongooseModel, domainModel, refs);
+            let dataSet = new DataSet(mongooseModel, domainModel, refs, this);
             Object.defineProperty(this, mongooseModel.collection.collectionName, {
                 get() {
                     return dataSet;
