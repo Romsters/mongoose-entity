@@ -53,7 +53,7 @@ module.exports = class {
         }
     }
     *populate(entity, options){
-        return yield* populate(this, entity, options);
+        return yield* populate.one(this, entity, options);
     }
     *find(criteria){
         var MongooseModel = this.mongooseModel;
@@ -83,21 +83,8 @@ module.exports = class {
             this.throwQueryFailed('findAndRemove');
         }
     }
-    *findAndPopulate(criteria, path){
-        var refs = this.refs;
-        var Constructor = refs.get(path);
-        this.throwIfInvalidDomainModel(Constructor);
-        var MongooseModel = this.mongooseModel;
-        try{
-            var collection = yield MongooseModel.find(criteria).populate(path);
-            var DomainModel = this.domainModel;
-            for(let entity of collection){
-                entity[path] = new Constructor(entity[path]);
-            }
-            return collection.map(entity => new DomainModel(entity));
-        } catch(e){
-            this.throwQueryFailed('findAndPopulate');
-        }
+    *findAndPopulate(criteria, options){
+        return yield* populate.many(this, criteria, options);
     }
     
     getMongooseEntity(entity){

@@ -2,38 +2,47 @@
 
 var MongooseEntityError = require('../errors/mongooseEntityError');
 
-module.exports = function* (dataSet, entity, options) {
+module.exports = {
+    *one(dataSet, entity, options){
+        return yield* populate({
+            dataSet, entity, options
+        });
+    },
+    *many(dataSet, creteria, options){
+        return yield* populate({
+            dataSet, creteria, options
+        });
+    }
+}
+
+function* populate(data){
+    var dataSet = data.dataSet;
+    var options = data.options;
+    var entity = data.entity;
+    var criteria = data.criteria;
     throwIfDataSetIsInvalid(dataSet);
-    dataSet.throwIfNotAppropriateInstance(entity);
+    entity && dataSet.throwIfNotAppropriateInstance(entity);
     var _options = null;
     if(typeof options === 'string'){
         _options = options;
     } else if(typeof options === 'object'){
         _options = Object.assign({}, options);
-    } else {
-        throwPopulateOptionsInvalid();
     }
-    var notLoaded = setFields(dataSet, entity, _options);
-    if(!notLoaded){
-        return entity;
+    if(!setFields(dataSet, entity || {}, _options)){
+        return entity || {};
     } else {
         let MongooseModel = dataSet.mongooseModel;
         try{
-            let mongooseEntity = yield MongooseModel.findOne({ _id: entity._id }).populate(_options);
-            return fillEntity(dataSet, entity, mongooseEntity, _options);
+            if(entity){
+                let mongooseEntity = yield MongooseModel.findOne({ _id: entity._id }).populate(_options);
+                return fillEntity(dataSet, entity, mongooseEntity, _options);
+            } else {
+                let mongooseEntities = yield MongooseModel.find(criteria).populate(_options);
+                return fillEntities(dataSet, mongooseEntities, _options);
+            }
         } catch(e){
             dataSet.throwQueryFailed('populate');
         }
-    }
-}
-
-function throwPopulateOptionsInvalid(){
-    throw new MongooseEntityError('populate options are invalid');
-}
-
-function throwIfDataSetIsInvalid(dataSet) {
-    if (!(typeof dataSet === 'object')) {
-        throw new MongooseEntityError('dataSet should be an object');
     }
 }
 
@@ -44,65 +53,56 @@ function isDeepPopulate(options){
     return false;
 }
 
-function fillEntity(dataSet, entity, mongooseEntity, options){
-    var fields = null;
-    if(typeof options === 'string'){
-        fields = options.split(' ');
-    } else if(typeof options === 'object'){
-        fields = options.path.split(' ');
-    } else {
-        throwPopulateOptionsInvalid();
+function fillEntities(dataSet, mongooseEntities, options){
+    var Model = dataSet.domainModel;
+    for(let mongooseEntity of mongooseEntities){
+        let loadedData = fillEntity(dataSet, {}, mongooseEntity, options);
+        pushLoadedData(mongooseEntity, loadedData);
     }
+    return mongooseEntities.map(item => new Model(item));
+}
+
+function fillEntity(dataSet, entity, mongooseEntity, options){
+    var fields = getFields(options);
     for(let field of fields){
-        if(!mongooseEntity[field]){
-            continue;
-        }
+        let data = mongooseEntity[field];
+        if(!data) continue;
         let value = null;
-        let Constructor = dataSet.dataContext[dataSet.refs.get(field)].domainModel;
-        if(mongooseEntity[field].length){
+        let subDataSet = dataSet.dataContext[dataSet.refs.get(field)];
+        let Model = subDataSet.domainModel;
+        if(data.length){
             if(options.populate){
-                let subDataSet = dataSet.dataContext[dataSet.refs.get(field)];
-                for(let item of mongooseEntity[field]){
-                    let loadedFields = fillEntity(subDataSet, {}, item, options.populate);
-                    for(let key in loadedFields){
-                        Object.defineProperty(item, key, {
-                            get(){
-                                return loadedFields[key];
-                            }
-                        });
-                    }
+                for(let item of data){
+                    let loadedData = fillEntity(subDataSet, {}, item, options.populate);
+                    pushLoadedData(item, loadedData);
                 }
             }
-            value = mongooseEntity[field].map(item => new Constructor(item));
+            value = data.map(item => new Model(item));
         } else {
             if(options.populate){
-                let subDataSet = dataSet.dataContext[dataSet.refs.get(field)];
-                let loadedFields = fillEntity(subDataSet, {}, mongooseEntity[field], options.populate);
-                for(let key in loadedFields){
-                    Object.defineProperty(mongooseEntity[field], key, {
-                        get(){
-                            return loadedFields[key];
-                        }
-                    });
-                }
+                let loadedData = fillEntity(subDataSet, {}, data, options.populate);
+                pushLoadedData(data, loadedData);
             }
-            value = new Constructor(mongooseEntity[field]);
+            value = new Model(data);
         }
         entity[field] = value;
     }
     return entity;
 }
 
+function pushLoadedData(source, loadedData){
+    for(let key in loadedData){
+        Object.defineProperty(source, key, {
+            get(){
+                return loadedData[key];
+            }
+        });
+    }
+}
+
 function setFields(dataSet, entity, options){
     var deep = isDeepPopulate(options);
-    var fields = null;
-    if(typeof options === 'string'){
-        fields = options.split(' ');
-    } else if(typeof options === 'object'){
-        fields = options.path && options.path.split(' ');
-    } else {
-        throwPopulateOptionsInvalid();
-    }
+    var fields = getFields(options);
     if(!fields || !fields.length){
         throwPopulateOptionsInvalid();
     }
@@ -110,12 +110,10 @@ function setFields(dataSet, entity, options){
     var refs = dataSet.refs;
     var notLoadedFields = [];
     for(let field of fields){
-        let Constructor = context[refs.get(field)] && context[refs.get(field)].domainModel;
-        dataSet.throwIfInvalidDomainModel(Constructor);
-        if(entity[field] instanceof Constructor){
-            continue;
-        }
-        if(entity[field] && entity[field][0] instanceof Constructor){
+        let setName = refs.get(field);
+        let Model = context[setName] && context[setName].domainModel;
+        dataSet.throwIfInvalidDomainModel(Model);
+        if(entity[field] && (entity[field] instanceof Model) || entity[field][0] instanceof Model){
             continue;
         }
         notLoadedFields.push(field);
@@ -145,5 +143,24 @@ function setFields(dataSet, entity, options){
             setFields(subDataSet, {}, options.populate);
         }
         return true;
+    }
+}
+
+function getFields(options){
+    if(typeof options === 'string'){
+        return options.split(' ');
+    } else if(typeof options === 'object' && typeof options.path === 'string'){
+        return options.path.split(' ');
+    }
+    throwPopulateOptionsInvalid();
+}
+
+function throwPopulateOptionsInvalid(){
+    throw new MongooseEntityError('populate options are invalid');
+}
+
+function throwIfDataSetIsInvalid(dataSet) {
+    if (!(typeof dataSet === 'object')) {
+        throw new MongooseEntityError('dataSet should be an object');
     }
 }
