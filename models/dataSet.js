@@ -52,20 +52,17 @@ module.exports = class {
             this.throwQueryFailed('remove');
         }
     }
-    *populate(entity, options){
-        return yield* populate.one(this, entity, options);
+    *findOne(criteria){
+        var MongooseModel = this.mongooseModel;
+        var DomainModel = this.domainModel;
+        var entity = yield MongooseModel.findOne(criteria);
+        return entity ? new DomainModel(entity): null;
     }
     *find(criteria){
         var MongooseModel = this.mongooseModel;
         var DomainModel = this.domainModel;
         var collection = yield MongooseModel.find(criteria);
         return collection.map(entity => new DomainModel(entity));
-    }
-    *findOne(criteria){
-        var MongooseModel = this.mongooseModel;
-        var DomainModel = this.domainModel;
-        var entity = yield MongooseModel.findOne(criteria);
-        return entity ? new DomainModel(entity): null;
     }
     *findAndUpdate(conditions, doc, options){
         var MongooseModel = this.mongooseModel;
@@ -83,8 +80,14 @@ module.exports = class {
             this.throwQueryFailed('findAndRemove');
         }
     }
+    *populate(entity, options){
+        return yield* populate.instance(this, entity, options);
+    }
     *findAndPopulate(criteria, options){
-        return yield* populate.many(this, criteria, options);
+        return yield* populate.criteria(this, criteria, options);
+    }
+    *findOneAndPopulate(criteria, options){
+        return yield* populate.criteria(this, criteria, options, true);
     }
     
     getMongooseEntity(entity){
