@@ -34,48 +34,52 @@ module.exports = class {
     get dataContext(){
         return _contexts.get(this);
     }
+    *count(conditions){
+        return yield this.mongooseModel.count(conditions);
+    }
+    *distinct(field, conditions){
+        return yield this.mongooseModel.distinct(field, conditions);
+    }
+    *insertMany(entities){
+        for(let entity of entities){
+            this.throwIfNotAppropriateInstance(entity);
+        }
+        return yield this.mongooseModel.insertMany(entities);
+    }
     *save(entity){
         this.throwIfNotAppropriateInstance(entity);
-        var MongooseModel = this.mongooseModel;
         try{
-            return yield MongooseModel.update({ _id: entity._id }, this.getMongooseEntity(entity), { upsert: true });
+            return yield this.mongooseModel.update({ _id: entity._id }, this.getMongooseEntity(entity), { upsert: true });
         } catch(e){
             this.throwQueryFailed('save');
         }
     }
     *remove(entity){
         this.throwIfNotAppropriateInstance(entity);
-        var MongooseModel = this.mongooseModel;
         try{
-            return yield MongooseModel.remove({ _id: entity._id });
+            return yield this.mongooseModel.remove({ _id: entity._id });
         } catch(e){
             this.throwQueryFailed('remove');
         }
     }
     *findOne(criteria){
-        var MongooseModel = this.mongooseModel;
-        var DomainModel = this.domainModel;
-        var entity = yield MongooseModel.findOne(criteria);
-        return entity ? new DomainModel(entity): null;
+        var entity = yield this.mongooseModel.findOne(criteria);
+        return entity ? new this.domainModel(entity): null;
     }
     *find(criteria){
-        var MongooseModel = this.mongooseModel;
-        var DomainModel = this.domainModel;
-        var collection = yield MongooseModel.find(criteria);
-        return collection.map(entity => new DomainModel(entity));
+        var collection = yield this.mongooseModel.find(criteria);
+        return collection.map(entity => new this.domainModel(entity));
     }
     *findAndUpdate(conditions, doc, options){
-        var MongooseModel = this.mongooseModel;
         try{
-            return yield MongooseModel.update(conditions, doc, options);
+            return yield this.mongooseModel.update(conditions, doc, options);
         } catch(e){
             this.throwQueryFailed('findAndUpdate');
         }
     }
     *findAndRemove(criteria){
-        var MongooseModel = this.mongooseModel;
         try{
-            return yield MongooseModel.remove(criteria);
+            return yield this.mongooseModel.remove(criteria);
         } catch(e){
             this.throwQueryFailed('findAndRemove');
         }
@@ -91,8 +95,7 @@ module.exports = class {
     }
     
     getMongooseEntity(entity){
-        var MongooseModel = this.mongooseModel;
-        var modelKeys = Object.keys(MongooseModel.schema.paths).filter(key => key !== '__v');
+        var modelKeys = Object.keys(this.mongooseModel.schema.paths).filter(key => key !== this.mongooseModel.schema.options.versionKey);
         var mongooseEntity = {};
         for(let key of modelKeys){
             mongooseEntity[key] = entity[key];

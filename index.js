@@ -88,19 +88,19 @@ class MyContext extends DataContext {
 }
 
 var context = new MyContext();
-/*var user = new User({ name: 'name1'});
+var user = new User({ name: 'name1'});
 var book = new Book({ title: 'title1'});
 var book2 = new Book({ title: 'title22'});
 user.books = [book];
 user.books.push(book2);
 book.author = user;
-book2.author = user;*/
+book2.author = user;
 
 co(function*(){
     /*yield* context.users.save(user);
     yield* context.books.save(book);
     yield* context.books.save(book2);*/
-    var user = yield* context.users.findOne({name: 'no name'});
+    /*var user = yield* context.users.findOne({name: 'no name'});
     yield* context.users.populate(user, {
         path: 'books',
         populate: {
@@ -110,7 +110,7 @@ co(function*(){
     });
     yield* context.users.populate(user, {
         path: 'books'
-    });
+    });*/
     yield* context.users.save(user);
     return null;
 }).catch(e => {
