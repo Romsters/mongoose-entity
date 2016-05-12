@@ -84,8 +84,8 @@ module.exports = class {
             this.throwQueryFailed('findAndRemove');
         }
     }
-    *populate(entity, options){ // populate many
-        return yield* populate.instance(this, entity, options);
+    *populate(entities, options){ // fields
+        return yield* populate.instance(this, entities, options);
     }
     *findAndPopulate(criteria, options){
         return yield* populate.criteria(this, criteria, options);

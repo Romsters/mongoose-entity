@@ -3,9 +3,9 @@
 var MongooseEntityError = require('../errors/mongooseEntityError');
 
 module.exports = {
-    *instance(dataSet, entity, options){
+    *instance(dataSet, entities, options){
         return yield* populate({
-            dataSet, entity, options
+            dataSet, entities, options
         });
     },
     *criteria(dataSet, creteria, options, single){
@@ -18,38 +18,55 @@ module.exports = {
 function* populate(data){
     var dataSet = data.dataSet;
     var options = data.options;
-    var entity = data.entity;
+    var entities = data.entities;
     var criteria = data.criteria;
     var single = data.single;
     
     throwIfDataSetIsInvalid(dataSet);
-    typeof entity !== 'undefined' && dataSet.throwIfNotAppropriateInstance(entity);
+    if(entities){
+        if(entities.length){
+            for(let entity of entities){
+                dataSet.throwIfNotAppropriateInstance(entity);
+            }
+        } else {
+            dataSet.throwIfNotAppropriateInstance(entities);
+        }
+    }
     var _options = null;
     if(typeof options === 'string'){
         _options = options;
     } else if(typeof options === 'object'){
         _options = Object.assign({}, options);
     }
-    if(!setFields(dataSet, entity || {}, _options)){
-        return entity;
-    } else {
-        let MongooseModel = dataSet.mongooseModel;
-        try{
-            if(entity){
-                let mongooseEntity = yield MongooseModel.findOne({ _id: entity._id }).populate(_options);
-                return fillEntity(dataSet, entity, mongooseEntity, _options);
-            } else {
-                let mongooseEntities = null;
-                if(single){
-                    mongooseEntities = yield MongooseModel.findOne(criteria).populate(_options);
-                } else {
-                    mongooseEntities = yield MongooseModel.find(criteria).populate(_options);
+    if(!setFields(dataSet, entities || {}, _options)){
+        return entities;
+    }
+    let MongooseModel = dataSet.mongooseModel;
+    try{
+        if(entities){
+            let cond = entities.length ? entities.map(entity => dataSet.getMongooseEntity(entity)) : dataSet.getMongooseEntity(entity);
+            let mongooseEntities = yield MongooseModel.populate(cond, _options);
+            if(entities.length){
+                if(!mongooseEntities || !mongooseEntities.length){
+                    return entities;
                 }
-                return fillEntities(dataSet, mongooseEntities, _options);
+                for(let mongooseEntity of mongooseEntities){
+                    let entity = entities.find(entity => mongooseEntity._id && entity._id === mongooseEntity._id);
+                    fillEntity(dataSet, entity, mongooseEntity, options);
+                }
+                return entities;
             }
-        } catch(e){
-            dataSet.throwQueryFailed('populate');
+            return fillEntity(dataSet, entities, mongooseEntities, _options);
+        } 
+        let mongooseEntities = null;
+        if(single){
+            mongooseEntities = yield MongooseModel.findOne(criteria).populate(_options);
+        } else {
+            mongooseEntities = yield MongooseModel.find(criteria).populate(_options);
         }
+        return fillEntities(dataSet, mongooseEntities, _options);
+    } catch(e){
+        dataSet.throwQueryFailed('populate');
     }
 }
 
@@ -119,7 +136,7 @@ function pushLoadedData(source, loadedData){
     }
 }
 
-function setFields(dataSet, entity, options){
+function setFields(dataSet, entities, options){
     var deep = isDeepPopulate(options);
     var fields = getFields(options);
     if(!fields || !fields.length){
@@ -128,13 +145,20 @@ function setFields(dataSet, entity, options){
     var context = dataSet.dataContext;
     var refs = dataSet.refs;
     var notLoadedFields = [];
+    var _entities = entities.length ? entities : [entities];
+    var loaded = true;
     for(let field of fields){
         let setName = refs.get(field);
         let Model = context[setName] && context[setName].domainModel;
         dataSet.throwIfInvalidDomainModel(Model);
-        if(entity[field] && ((entity[field] instanceof Model) || (entity[field][0] instanceof Model))){
-            continue;
+        for(let entity of entities){
+            if(!(entity[field] && ((entity[field] instanceof Model) || (entity[field][0] instanceof Model)))){
+                loaded = false;
+                break;
+            }
         }
+        if(loaded) continue;
+        loaded = true;
         notLoadedFields.push(field);
     }
     if(!deep){
