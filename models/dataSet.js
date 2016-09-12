@@ -37,8 +37,8 @@ module.exports = class {
     *count(conditions){
         return yield this.mongooseModel.count(conditions);
     }
-    *distinct(field, conditions){
-        return yield this.mongooseModel.distinct(field, conditions);
+    *distinct(field, query){
+        return yield this.mongooseModel.distinct(field, query);
     }
     *insertMany(entities){
         for(let entity of entities){
@@ -86,6 +86,16 @@ module.exports = class {
     }
     *populate(entity, options){
         return yield* populate.instance(this, entity, options);
+    }
+    *populateMany(entities, options){
+        if(!entities || entities.length < 1) {
+            return entities;
+        }
+        var result = [];
+        for(let entity of entities) {
+            result.push(yield* this.populate(entity, options));
+        }
+        return result;
     }
     *findAndPopulate(criteria, options){
         return yield* populate.criteria(this, criteria, options);

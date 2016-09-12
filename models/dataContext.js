@@ -1,6 +1,5 @@
 "use strict";
 
-var mongoose = require('mongoose');
 var constants = require('../constants');
 var DataMapper = require('./dataMapper');
 var DataSet = require('./dataSet');
