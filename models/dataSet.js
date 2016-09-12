@@ -62,13 +62,13 @@ module.exports = class {
             this.throwQueryFailed('remove');
         }
     }
-    *findOne(criteria){
-        var entity = yield this.mongooseModel.findOne(criteria);
-        return entity ? new this.domainModel(entity): null;
+    *findOne(criteria, projection){
+        var entity = yield this.mongooseModel.findOne(criteria, projection);
+        return entity ? projection ? entity : new this.domainModel(entity): null;
     }
-    *find(criteria){
-        var collection = yield this.mongooseModel.find(criteria);
-        return collection.map(entity => new this.domainModel(entity));
+    *find(criteria, fields, options){
+        var collection = yield this.mongooseModel.find(criteria, fields, options);
+        return fields ? collection : collection.map(entity => new this.domainModel(entity));
     }
     *findAndUpdate(conditions, doc, options){
         try{
@@ -84,8 +84,8 @@ module.exports = class {
             this.throwQueryFailed('findAndRemove');
         }
     }
-    *populate(entity, options){
-        return yield* populate.instance(this, entity, options);
+    *populate(entities, options){ // fields
+        return yield* populate.instance(this, entities, options);
     }
     *populateMany(entities, options){
         if(!entities || entities.length < 1) {
