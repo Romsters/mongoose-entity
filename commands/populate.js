@@ -44,7 +44,7 @@ function* populate(data){
     let MongooseModel = dataSet.mongooseModel;
     try{
         if(entities){
-            let cond = entities.length ? entities.map(entity => dataSet.getMongooseEntity(entity)) : dataSet.getMongooseEntity(entity);
+            let cond = entities.length ? entities.map(entity => dataSet.getMongooseEntity(entity)) : dataSet.getMongooseEntity(entities);
             let mongooseEntities = yield MongooseModel.populate(cond, _options);
             if(entities.length){
                 if(!mongooseEntities || !mongooseEntities.length){
@@ -92,7 +92,7 @@ function fillEntities(dataSet, mongooseEntities, options){
         let loadedData = fillEntity(dataSet, {}, mongooseEntities, options);
         pushLoadedData(mongooseEntities, loadedData);
         return new Model(mongooseEntities);
-    } 
+    }
 }
 
 function fillEntity(dataSet, entity, mongooseEntity, options){
@@ -151,7 +151,7 @@ function setFields(dataSet, entities, options){
         let setName = refs.get(field);
         let Model = context[setName] && context[setName].domainModel;
         dataSet.throwIfInvalidDomainModel(Model);
-        for(let entity of entities){
+        for(let entity of _entities){
             if(!(entity[field] && ((entity[field] instanceof Model) || (entity[field][0] instanceof Model)))){
                 loaded = false;
                 break;

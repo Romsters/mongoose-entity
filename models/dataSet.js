@@ -51,7 +51,7 @@ module.exports = class {
         try{
             return yield this.mongooseModel.update({ _id: entity._id }, this.getMongooseEntity(entity), { upsert: true });
         } catch(e){
-            this.throwQueryFailed('save');
+            this.throwQueryFailed('save', e);
         }
     }
     *remove(entity){
@@ -59,7 +59,7 @@ module.exports = class {
         try{
             return yield this.mongooseModel.remove({ _id: entity._id });
         } catch(e){
-            this.throwQueryFailed('remove');
+            this.throwQueryFailed('remove', e);
         }
     }
     *findOne(criteria, projection){
@@ -74,28 +74,18 @@ module.exports = class {
         try{
             return yield this.mongooseModel.update(conditions, doc, options);
         } catch(e){
-            this.throwQueryFailed('findAndUpdate');
+            this.throwQueryFailed('findAndUpdate', e);
         }
     }
     *findAndRemove(criteria){
         try{
             return yield this.mongooseModel.remove(criteria);
         } catch(e){
-            this.throwQueryFailed('findAndRemove');
+            this.throwQueryFailed('findAndRemove', e);
         }
     }
-    *populate(entities, options){ // fields
+    *populate(entities, options){
         return yield* populate.instance(this, entities, options);
-    }
-    *populateMany(entities, options){
-        if(!entities || entities.length < 1) {
-            return entities;
-        }
-        var result = [];
-        for(let entity of entities) {
-            result.push(yield* this.populate(entity, options));
-        }
-        return result;
     }
     *findAndPopulate(criteria, options){
         return yield* populate.criteria(this, criteria, options);
@@ -113,8 +103,8 @@ module.exports = class {
         return mongooseEntity;
     }
     
-    throwQueryFailed(action){
-        throw new MongooseEntityError(`failed to ${action} data`);
+    throwQueryFailed(action, nativeError){
+        throw new MongooseEntityError(`failed to ${action} data, error: ${(nativeError && nativeError.message) || ''}`);
     }
     throwIfNullOrNotDefined(name, object){
         if(object === null || object === undefined){

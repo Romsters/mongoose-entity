@@ -32,5 +32,5 @@ module.exports = class {
     }
     get mongooseModel(){
         return _mongooseModels.get(this);
-    }
+    }      
 }
