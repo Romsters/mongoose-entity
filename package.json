@@ -1,7 +1,7 @@
 {
   "name": "mongoose-entity",
-  "version": "0.0.1",
-  "description": "mongoose based ORM",
+  "version": "1.0.0",
+  "description": "class-based wrapper for mongoose",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -29,7 +29,7 @@
     "es6-wrapper",
     "js"
   ],
-  "author": "Roman Petriv",
+  "author": "Roman Petriv <petriv.roma@gmail.com> (https://github.com/Romsters)",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Romsters/mongoose-entity/issues"
