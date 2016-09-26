@@ -90,3 +90,91 @@ class Book extends Entity {
   }
 }
 ```
+## DataModel
+DataModel is the class that is used to create data sets (collections) for your DataContext from the specified Model (domain model) and schema (description of the Model). Also, you can pass a custom data set name as a third parameter.
+```
+var DataModel = require('mongoose-entity').DataModel;
+
+var entitySchema = {
+  createdOn: { type: Date, required: true }
+};
+        
+var userSchema = new mongoose.Schema(Object.assign({
+  name: { type: String, required: true, unique: true },
+  books: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Book'}]
+}, entitySchema));
+        
+var bookSchema = new mongoose.Schema(Object.assign({
+  title: { type: String, required: true },
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User'}
+}, entitySchema));
+        
+var userModel = new DataModel(userSchema, User); // data set for users collection
+var bookModel = new DataModel(bookSchema, Book, 'books'); // data set for books collection
+```
+## DataContext
+DataContext is the class that is used to perform any kind of operations with collections and entities.
+
+You should create your own data context implementation to perform operations with your data. Each your data context should extend DataContext singleton class provided by mongoose-entity.
+
+There are special init method, that should be defined in your data context implementation. It should return an array of DataModel instances that are related to this context.
+
+All the DataModels returned by init method will be available as data sets (collections) in the instance.
+```
+var DataContext = require('mongoose-entity').DataContext;
+
+class MyContext extends DataContext {
+  constructor(){
+      super();
+  }
+  init(){
+    var entitySchema = {
+      createdOn: { type: Date, required: true }
+    };
+
+    var userSchema = new mongoose.Schema(Object.assign({
+      name: { type: String, required: true, unique: true },
+      books: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Book'}]
+    }, entitySchema));
+
+    var bookSchema = new mongoose.Schema(Object.assign({
+      title: { type: String, required: true },
+      author: { type: mongoose.Schema.Types.ObjectId, ref: 'User'}
+    }, entitySchema));
+
+    return [
+      new DataModel(userSchema, User),
+      new DataModel(bookSchema, Book)
+    ];
+  }
+}
+
+var myDataContextInstance = new MyDataContext(); // create instance each time you need 
+var usersCollection = myDataContextInstance.users; // users data set
+var booksCollection = myDataContextInstance.books; // books data set
+```
+## Queries and operations
+To perform any operation or execure query you should get appropriate data set and call appropriate function with appropriate parameters.
+### Saving entities
+```
+// .save(entity), where entity is an instance of appropriate Model.
+var context = new MyContext();
+
+var user = new User({ name: 'name' });
+var book = new Book({ title: 'title' });
+user.books = [book];
+
+var book2 = new Book({ title: 'title2' });
+user.books.push(book2);
+book.author = user;
+book2.author = user;
+
+yield* context.users.save(user);
+yield* context.books.save(book);
+yield* context.books.save(book2);
+```
+### Removing entities
+```
+// .remove(entity), where entity is an instance of appropriate Model.
+yield* context.users.remove(user)
+```
