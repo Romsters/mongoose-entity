@@ -176,5 +176,10 @@ yield* context.books.save(book2);
 ### Removing entities
 ```
 // .remove(entity), where entity is an instance of appropriate Model.
-yield* context.users.remove(user)
+yield* context.users.remove(user);
+```
+### findAndRemove
+```
+// .findAndRemove(criteria), remove all entities from db those correspond to criteria
+yield* context.books.findAndRemove({ title: 'title'});
 ```
